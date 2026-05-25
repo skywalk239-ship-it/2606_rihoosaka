@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>window.PUBLIC_BIN_ID='6a141c9b6610dd3ae8a154d3'</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>리호짱과 오사카 데이트 🌸</title>
 <link href="https://fonts.googleapis.com/css2?family=Gmarket+Sans:wght@300;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -281,7 +282,7 @@ const CAT={food:{l:'식사',lj:'食事',c:'tag-food'},drink:{l:'음료',lj:'飲�
 
 // ── JSONbin API ──
 const JB='https://api.jsonbin.io/v3';
-async function jbRead(id,k){const r=await fetch(`${JB}/b/${id}/latest`,{headers:{'X-Master-Key':k,'X-Bin-Meta':'false'}});if(!r.ok)throw new Error(r.status);return r.json();}
+async function jbRead(id,k){const h={'X-Bin-Meta':'false'};if(k)h['X-Master-Key']=k;const r=await fetch(`${JB}/b/${id}/latest`,{headers:h});if(!r.ok)throw new Error(r.status);return r.json();}
 async function jbCreate(k,d){const r=await fetch(`${JB}/b`,{method:'POST',headers:{'Content-Type':'application/json','X-Master-Key':k,'X-Bin-Name':'osaka-trip','X-Bin-Private':'false'},body:JSON.stringify(d)});if(!r.ok)throw new Error(r.status);return (await r.json()).metadata.id;}
 async function jbWrite(id,k,d){const r=await fetch(`${JB}/b/${id}`,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':k},body:JSON.stringify(d)});if(!r.ok)throw new Error(r.status);}
 
@@ -291,10 +292,11 @@ const FB={"days":[{"day":1,"date":"6월 8일 (월)","date_jp":"6月8日 (月)","
 // ── 데이터 로드 ──
 async function loadData(){
   const cfg=getCfg();
-  if(cfg.key&&cfg.binId){
+  const binId=cfg.binId||window.PUBLIC_BIN_ID;
+  if(binId){
     showInd('☁️ 불러오는 중...',false,true);
-    try{DATA=await jbRead(cfg.binId,cfg.key);setDot(true);hideInd();}
-    catch(e){DATA=FB;toast('⚠️ JSONbin 연결 실패 — 기본 데이터로 시작해요');setDot(false);}
+    try{DATA=await jbRead(binId,cfg.key||null);setDot(!!cfg.key);hideInd();}
+    catch(e){DATA=FB;toast('⚠️ 데이터 로드 실패 — 기본 데이터로 시작해요');setDot(false);}
   }else{DATA=FB;}
   renderDays();initSakura();initBubble();
 }
@@ -415,14 +417,21 @@ async function connectJSONbin(){
     saveCfg({key:k,binId});
     document.getElementById('cfgBinId').value=binId;
     setDot(true);document.getElementById('cfgBadge').className='status-badge ok';document.getElementById('cfgBadge').textContent='● 연결됨';
-    toast('🐙 JSONbin 연결 완료됐냥~!');document.getElementById('cfgOverlay').classList.remove('open');
+    toast('🐙 연결 완료! BinId를 복사해서 HTML에 붙여넣으면 누구나 최신 데이터를 봐요 🐾');document.getElementById('cfgOverlay').classList.remove('open');showBinIdCopy(binId);
   }catch(e){toast('❌ 연결 실패: '+e.message);}
   finally{btn.disabled=false;sp.style.display='none';lb.textContent=getCfg().binId?'🔄 재연결 / 데이터 업로드':'🔑 연결하기';}
 }
 function setDot(ok){document.getElementById('connDot').className='conn-dot'+(ok?' ok':'');}
 
 // ── 토스트 ──
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+function toast(msg,dur){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur||2400);}
+function showBinIdCopy(binId){
+  // BinId를 cfgBinId 필드에 표시하고 복사 버튼 노출
+  document.getElementById('cfgBinId').value=binId;
+  // HTML에 PUBLIC_BIN_ID 박는 방법 알림
+  const msg=`✅ BinId: ${binId}\nHTML 상단에 아래 한 줄 추가하면\n누구나 최신 데이터를 불러와요:\n<script>window.PUBLIC_BIN_ID='${binId}'<\/script>`;
+  setTimeout(()=>{ if(confirm('BinId를 클립보드에 복사할까요?\n\n'+msg)){navigator.clipboard.writeText(`<script>window.PUBLIC_BIN_ID='${binId}'<\/script>`).then(()=>toast('📋 복사됐냥! HTML <head>에 붙여넣어줘',3000));} },300);
+}
 
 // ── 벚꽃 ──
 function initSakura(){const c=document.getElementById('sakura'),p=['🌸','🌸','🌸','🌷','✿'];for(let i=0;i<12;i++){const el=document.createElement('div');el.className='petal';el.textContent=p[~~(Math.random()*p.length)];el.style.cssText=`left:${Math.random()*100}%;font-size:${10+Math.random()*8}px;animation-duration:${6+Math.random()*8}s;animation-delay:${-Math.random()*12}s;opacity:${.3+Math.random()*.4}`;c.appendChild(el);}}
